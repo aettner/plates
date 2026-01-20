@@ -5,7 +5,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -20,13 +20,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.edit
 import com.aettner.plates.ui.theme.PlatesTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
+
+private const val PREFS_NAME = "LicensePlatePrefs"
+private const val SEEN_PLATES_KEY = "seen_plates"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -37,6 +43,20 @@ class MainActivity : ComponentActivity() {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     var licensePlates by remember { mutableStateOf<List<LicensePlate>>(emptyList()) }
                     val context = LocalContext.current
+
+                    val sharedPreferences = remember {
+                        context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                    }
+
+                    var seenPlates by remember {
+                        mutableStateOf(sharedPreferences.getStringSet(SEEN_PLATES_KEY, emptySet()) ?: emptySet())
+                    }
+
+                    LaunchedEffect(seenPlates) {
+                        sharedPreferences.edit {
+                            putStringSet(SEEN_PLATES_KEY, seenPlates)
+                        }
+                    }
 
                     LaunchedEffect(Unit) {
                         withContext(Dispatchers.IO) {
@@ -51,6 +71,11 @@ class MainActivity : ComponentActivity() {
 
                     LicensePlateList(
                         licensePlates = licensePlates,
+                        seenPlates = seenPlates,
+                        onPlateClick = { plate ->
+                            seenPlates = seenPlates + plate.code
+                            Log.d("LicensePlateClick", "Clicked and marked as seen: ${plate.code}")
+                        },
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -60,15 +85,26 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun LicensePlateList(licensePlates: List<LicensePlate>, modifier: Modifier = Modifier) {
+fun LicensePlateList(
+    licensePlates: List<LicensePlate>,
+    seenPlates: Set<String>,
+    onPlateClick: (LicensePlate) -> Unit,
+    modifier: Modifier = Modifier
+) {
     LazyColumn(modifier = modifier) {
-        items(licensePlates) { plate ->
+        items(items = licensePlates, key = { it.code }) { plate ->
+            val isSeen = plate.code in seenPlates
             Text(
                 text = "${plate.code}: ${plate.city} (${plate.state})",
+                color = if (isSeen) Color.Gray else Color.Unspecified,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clickable {
-                        Log.d("LicensePlateClick", "Clicked: ${plate.code}")
+                    .pointerInput(plate) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                onPlateClick(plate)
+                            }
+                        )
                     }
                     .padding(16.dp)
             )
@@ -80,6 +116,10 @@ fun LicensePlateList(licensePlates: List<LicensePlate>, modifier: Modifier = Mod
 @Composable
 fun GreetingPreview() {
     PlatesTheme {
-        LicensePlateList(licensePlates = listOf(LicensePlate("KA", "Karlsruhe", "Baden-Württemberg")))
+        LicensePlateList(
+            licensePlates = listOf(LicensePlate("KA", "Karlsruhe", "Baden-Württemberg")),
+            seenPlates = setOf("KA"),
+            onPlateClick = {}
+        )
     }
 }
