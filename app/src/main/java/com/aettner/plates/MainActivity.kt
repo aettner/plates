@@ -5,7 +5,6 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,6 +21,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -55,11 +55,57 @@ sealed class FilterState {
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
         setContent {
             PlatesTheme {
+                var licensePlates by remember { mutableStateOf<List<LicensePlate>>(emptyList()) }
+                val context = LocalContext.current
+
+                val sharedPreferences = remember {
+                    context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+                }
+                var seenPlates by remember {
+                    mutableStateOf(sharedPreferences.getStringSet(SEEN_PLATES_KEY, emptySet()) ?: emptySet())
+                }
+
+                LaunchedEffect(seenPlates) {
+                    sharedPreferences.edit {
+                        putStringSet(SEEN_PLATES_KEY, seenPlates)
+                    }
+                }
+
+                LaunchedEffect(Unit) {
+                    withContext(Dispatchers.IO) {
+                        try {
+                            val jsonString = context.assets.open("german_license_plates.json").bufferedReader().use { it.readText() }
+                            licensePlates = Json.decodeFromString<List<LicensePlate>>(jsonString)
+                        } catch (e: Exception) {
+                            e.printStackTrace()
+                        }
+                    }
+                }
+
+                val states = remember(licensePlates) {
+                    listOf("All") + licensePlates.map { it.state }.distinct().sorted()
+                }
+
                 var showMenu by remember { mutableStateOf(false) }
                 var filterState by remember { mutableStateOf<FilterState>(FilterState.Unseen) }
+                var showStateMenu by remember { mutableStateOf(false) }
+                var selectedState by remember { mutableStateOf("All") }
+
+                val filteredPlates = remember(licensePlates, seenPlates, filterState, selectedState) {
+                    val stateFilteredPlates = if (selectedState == "All") {
+                        licensePlates
+                    } else {
+                        licensePlates.filter { it.state == selectedState }
+                    }
+
+                    when (filterState) {
+                        FilterState.All -> stateFilteredPlates
+                        FilterState.Seen -> stateFilteredPlates.filter { it.code in seenPlates }
+                        FilterState.Unseen -> stateFilteredPlates.filter { it.code !in seenPlates }
+                    }
+                }
 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -67,57 +113,40 @@ class MainActivity : ComponentActivity() {
                         TopAppBar(
                             title = { Text("Plates") },
                             actions = {
-                                IconButton(onClick = { showMenu = !showMenu }) {
-                                    Icon(Icons.Default.MoreVert, contentDescription = "More")
+                                Box {
+                                    TextButton(onClick = { showStateMenu = true }) {
+                                        Text(selectedState)
+                                    }
+                                    DropdownMenu(
+                                        expanded = showStateMenu,
+                                        onDismissRequest = { showStateMenu = false }
+                                    ) {
+                                        states.forEach { state ->
+                                            DropdownMenuItem(text = { Text(state) }, onClick = {
+                                                selectedState = state
+                                                showStateMenu = false
+                                            })
+                                        }
+                                    }
                                 }
-                                DropdownMenu(
-                                    expanded = showMenu,
-                                    onDismissRequest = { showMenu = false }
-                                ) {
-                                    DropdownMenuItem(text = { Text("All") }, onClick = { filterState = FilterState.All; showMenu = false })
-                                    DropdownMenuItem(text = { Text("Seen") }, onClick = { filterState = FilterState.Seen; showMenu = false })
-                                    DropdownMenuItem(text = { Text("Unseen") }, onClick = { filterState = FilterState.Unseen; showMenu = false })
+
+                                Box {
+                                    IconButton(onClick = { showMenu = !showMenu }) {
+                                        Icon(Icons.Default.MoreVert, contentDescription = "More")
+                                    }
+                                    DropdownMenu(
+                                        expanded = showMenu,
+                                        onDismissRequest = { showMenu = false }
+                                    ) {
+                                        DropdownMenuItem(text = { Text("All") }, onClick = { filterState = FilterState.All; showMenu = false })
+                                        DropdownMenuItem(text = { Text("Seen") }, onClick = { filterState = FilterState.Seen; showMenu = false })
+                                        DropdownMenuItem(text = { Text("Unseen") }, onClick = { filterState = FilterState.Unseen; showMenu = false })
+                                    }
                                 }
                             }
                         )
                     }
                 ) { innerPadding ->
-                    var licensePlates by remember { mutableStateOf<List<LicensePlate>>(emptyList()) }
-                    val context = LocalContext.current
-
-                    val sharedPreferences = remember {
-                        context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-                    }
-
-                    var seenPlates by remember {
-                        mutableStateOf(sharedPreferences.getStringSet(SEEN_PLATES_KEY, emptySet()) ?: emptySet())
-                    }
-
-                    LaunchedEffect(seenPlates) {
-                        sharedPreferences.edit {
-                            putStringSet(SEEN_PLATES_KEY, seenPlates)
-                        }
-                    }
-
-                    LaunchedEffect(Unit) {
-                        withContext(Dispatchers.IO) {
-                            try {
-                                val jsonString = context.assets.open("german_license_plates.json").bufferedReader().use { it.readText() }
-                                licensePlates = Json.decodeFromString<List<LicensePlate>>(jsonString)
-                            } catch (e: Exception) {
-                                e.printStackTrace()
-                            }
-                        }
-                    }
-
-                    val filteredPlates = remember(licensePlates, seenPlates, filterState) {
-                        when (filterState) {
-                            FilterState.All -> licensePlates
-                            FilterState.Seen -> licensePlates.filter { it.code in seenPlates }
-                            FilterState.Unseen -> licensePlates.filter { it.code !in seenPlates }
-                        }
-                    }
-
                     LicensePlateList(
                         licensePlates = filteredPlates,
                         seenPlates = seenPlates,
@@ -149,7 +178,7 @@ fun LicensePlateList(
         items(items = licensePlates, key = { it.code }) { plate ->
             val isSeen = plate.code in seenPlates
             Text(
-                text = "${plate.code}: ${plate.city} (${plate.state})",
+                text = "${plate.code}: ${plate.city}",
                 color = if (isSeen) Color.Gray else Color.Unspecified,
                 modifier = Modifier
                     .fillMaxWidth()
