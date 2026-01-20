@@ -73,8 +73,13 @@ class MainActivity : ComponentActivity() {
                         licensePlates = licensePlates,
                         seenPlates = seenPlates,
                         onPlateClick = { plate ->
-                            seenPlates = seenPlates + plate.code
-                            Log.d("LicensePlateClick", "Clicked and marked as seen: ${plate.code}")
+                            seenPlates = if (plate.code in seenPlates) {
+                                Log.d("LicensePlateClick", "Marked as unseen: ${plate.code}")
+                                seenPlates - plate.code
+                            } else {
+                                Log.d("LicensePlateClick", "Marked as seen: ${plate.code}")
+                                seenPlates + plate.code
+                            }
                         },
                         modifier = Modifier.padding(innerPadding)
                     )
