@@ -1,18 +1,28 @@
 package com.aettner.plates
 
+import android.content.Context.MODE_PRIVATE
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -29,18 +39,49 @@ import androidx.core.content.edit
 import com.aettner.plates.ui.theme.PlatesTheme
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 
 private const val PREFS_NAME = "LicensePlatePrefs"
 private const val SEEN_PLATES_KEY = "seen_plates"
 
+sealed class FilterState {
+    data object All : FilterState()
+    data object Seen : FilterState()
+    data object Unseen : FilterState()
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             PlatesTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
+                var showMenu by remember { mutableStateOf(false) }
+                var filterState by remember { mutableStateOf<FilterState>(FilterState.Unseen) }
+
+                Scaffold(
+                    modifier = Modifier.fillMaxSize(),
+                    topBar = {
+                        TopAppBar(
+                            title = { Text("Plates") },
+                            actions = {
+                                IconButton(onClick = { showMenu = !showMenu }) {
+                                    Icon(Icons.Default.MoreVert, contentDescription = "More")
+                                }
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                                ) {
+                                    DropdownMenuItem(text = { Text("All") }, onClick = { filterState = FilterState.All; showMenu = false })
+                                    DropdownMenuItem(text = { Text("Seen") }, onClick = { filterState = FilterState.Seen; showMenu = false })
+                                    DropdownMenuItem(text = { Text("Unseen") }, onClick = { filterState = FilterState.Unseen; showMenu = false })
+                                }
+                            }
+                        )
+                    }
+                ) { innerPadding ->
                     var licensePlates by remember { mutableStateOf<List<LicensePlate>>(emptyList()) }
                     val context = LocalContext.current
 
@@ -69,8 +110,16 @@ class MainActivity : ComponentActivity() {
                         }
                     }
 
+                    val filteredPlates = remember(licensePlates, seenPlates, filterState) {
+                        when (filterState) {
+                            FilterState.All -> licensePlates
+                            FilterState.Seen -> licensePlates.filter { it.code in seenPlates }
+                            FilterState.Unseen -> licensePlates.filter { it.code !in seenPlates }
+                        }
+                    }
+
                     LicensePlateList(
-                        licensePlates = licensePlates,
+                        licensePlates = filteredPlates,
                         seenPlates = seenPlates,
                         onPlateClick = { plate ->
                             seenPlates = if (plate.code in seenPlates) {
