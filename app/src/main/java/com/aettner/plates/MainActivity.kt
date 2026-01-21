@@ -22,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -129,6 +131,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 var showMenu by remember { mutableStateOf(false) }
+                var showSettingsMenu by remember { mutableStateOf(false) }
                 var filterState by remember { mutableStateOf<FilterState>(FilterState.Unseen) }
                 var showStateMenu by remember { mutableStateOf(false) }
                 var selectedState by remember { mutableStateOf("All states") }
@@ -215,6 +218,19 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
+                                IconButton(onClick = {
+                                    filterState = if (filterState == FilterState.Unseen) {
+                                        FilterState.All
+                                    } else {
+                                        FilterState.Unseen
+                                    }
+                                }) {
+                                    Icon(
+                                        imageVector = if (filterState == FilterState.Unseen) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = "Toggle Filter"
+                                    )
+                                }
+
                                 Box {
                                     IconButton(onClick = { showMenu = !showMenu }) {
                                         Icon(Icons.Default.MoreVert, contentDescription = "More")
@@ -224,23 +240,22 @@ class MainActivity : ComponentActivity() {
                                         onDismissRequest = { showMenu = false }
                                     ) {
                                         DropdownMenuItem(
-                                            text = { Text("All") },
-                                            onClick = { filterState = FilterState.All; showMenu = false })
-                                        DropdownMenuItem(
-                                            text = { Text("Seen") },
-                                            onClick = { filterState = FilterState.Seen; showMenu = false })
-                                        DropdownMenuItem(
-                                            text = { Text("Unseen") },
-                                            onClick = { filterState = FilterState.Unseen; showMenu = false })
+                                            text = { Text("Settings") },
+                                            onClick = { showSettingsMenu = true; showMenu = false })
+                                    }
+                                    DropdownMenu(
+                                        expanded = showSettingsMenu,
+                                        onDismissRequest = { showSettingsMenu = false })
+                                    {
                                         DropdownMenuItem(
                                             text = { Text("System Theme") },
-                                            onClick = { themePreference = "System"; showMenu = false })
+                                            onClick = { themePreference = "System"; showSettingsMenu = false })
                                         DropdownMenuItem(
                                             text = { Text("Light Theme") },
-                                            onClick = { themePreference = "Light"; showMenu = false })
+                                            onClick = { themePreference = "Light"; showSettingsMenu = false })
                                         DropdownMenuItem(
                                             text = { Text("Dark Theme") },
-                                            onClick = { themePreference = "Dark"; showMenu = false })
+                                            onClick = { themePreference = "Dark"; showSettingsMenu = false })
                                     }
                                 }
                             }
