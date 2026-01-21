@@ -129,6 +129,7 @@ class MainActivity : ComponentActivity() {
                 }
 
                 var showMenu by remember { mutableStateOf(false) }
+                var showSettingsMenu by remember { mutableStateOf(false) }
                 var filterState by remember { mutableStateOf<FilterState>(FilterState.Unseen) }
                 var showStateMenu by remember { mutableStateOf(false) }
                 var selectedState by remember { mutableStateOf("All states") }
@@ -233,14 +234,22 @@ class MainActivity : ComponentActivity() {
                                             text = { Text("Unseen") },
                                             onClick = { filterState = FilterState.Unseen; showMenu = false })
                                         DropdownMenuItem(
+                                            text = { Text("Settings") },
+                                            onClick = { showSettingsMenu = true; showMenu = false })
+                                    }
+                                    DropdownMenu(
+                                        expanded = showSettingsMenu,
+                                        onDismissRequest = { showSettingsMenu = false })
+                                    {
+                                        DropdownMenuItem(
                                             text = { Text("System Theme") },
-                                            onClick = { themePreference = "System"; showMenu = false })
+                                            onClick = { themePreference = "System"; showSettingsMenu = false })
                                         DropdownMenuItem(
                                             text = { Text("Light Theme") },
-                                            onClick = { themePreference = "Light"; showMenu = false })
+                                            onClick = { themePreference = "Light"; showSettingsMenu = false })
                                         DropdownMenuItem(
                                             text = { Text("Dark Theme") },
-                                            onClick = { themePreference = "Dark"; showMenu = false })
+                                            onClick = { themePreference = "Dark"; showSettingsMenu = false })
                                     }
                                 }
                             }
