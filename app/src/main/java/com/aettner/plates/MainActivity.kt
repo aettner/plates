@@ -22,6 +22,8 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.Card
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -216,6 +218,19 @@ class MainActivity : ComponentActivity() {
                                     }
                                 }
 
+                                IconButton(onClick = {
+                                    filterState = if (filterState == FilterState.Unseen) {
+                                        FilterState.All
+                                    } else {
+                                        FilterState.Unseen
+                                    }
+                                }) {
+                                    Icon(
+                                        imageVector = if (filterState == FilterState.Unseen) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                        contentDescription = "Toggle Filter"
+                                    )
+                                }
+
                                 Box {
                                     IconButton(onClick = { showMenu = !showMenu }) {
                                         Icon(Icons.Default.MoreVert, contentDescription = "More")
@@ -224,15 +239,6 @@ class MainActivity : ComponentActivity() {
                                         expanded = showMenu,
                                         onDismissRequest = { showMenu = false }
                                     ) {
-                                        DropdownMenuItem(
-                                            text = { Text("All") },
-                                            onClick = { filterState = FilterState.All; showMenu = false })
-                                        DropdownMenuItem(
-                                            text = { Text("Seen") },
-                                            onClick = { filterState = FilterState.Seen; showMenu = false })
-                                        DropdownMenuItem(
-                                            text = { Text("Unseen") },
-                                            onClick = { filterState = FilterState.Unseen; showMenu = false })
                                         DropdownMenuItem(
                                             text = { Text("Settings") },
                                             onClick = { showSettingsMenu = true; showMenu = false })
