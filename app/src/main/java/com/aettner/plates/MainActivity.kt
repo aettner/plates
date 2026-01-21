@@ -321,10 +321,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable(Screen.Map.route) {
-                            MapScreen(
-                                licensePlates = licensePlates,
-                                seenPlates = seenPlates
-                            )
+                            MapScreen(completedStates)
                         }
                     }
                 }
