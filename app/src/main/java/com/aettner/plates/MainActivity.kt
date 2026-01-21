@@ -10,6 +10,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -18,6 +19,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.EmojiEvents
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
@@ -119,6 +121,13 @@ class MainActivity : ComponentActivity() {
                     listOf("All states") + licensePlates.map { it.state }.distinct().sorted()
                 }
 
+                val completedStates = remember(licensePlates, seenPlates) {
+                    licensePlates.groupBy { it.state }.filter {
+                        val allPlatesInState = it.value.map { plate -> plate.code }.toSet()
+                        seenPlates.containsAll(allPlatesInState)
+                    }.keys
+                }
+
                 var showMenu by remember { mutableStateOf(false) }
                 var filterState by remember { mutableStateOf<FilterState>(FilterState.Unseen) }
                 var showStateMenu by remember { mutableStateOf(false) }
@@ -142,12 +151,10 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
-                LaunchedEffect(selectedState, filterState) {
+                LaunchedEffect(filteredPlates) {
                     searchQuery = ""
-                    coroutineScope.launch {
-                        if (filteredPlates.isNotEmpty()) {
-                            listState.scrollToItem(0)
-                        }
+                    if (filteredPlates.isNotEmpty()) {
+                        listState.scrollToItem(0)
                     }
                 }
 
@@ -188,7 +195,19 @@ class MainActivity : ComponentActivity() {
                                         onDismissRequest = { showStateMenu = false }
                                     ) {
                                         states.forEach { state ->
-                                            DropdownMenuItem(text = { Text(state) }, onClick = {
+                                            DropdownMenuItem(text = {
+                                                Row {
+                                                    Text(state)
+                                                    if (state in completedStates) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.EmojiEvents,
+                                                            contentDescription = "Trophy",
+                                                            tint = Color.Yellow,
+                                                            modifier = Modifier.padding(start = 4.dp)
+                                                        )
+                                                    }
+                                                }
+                                            }, onClick = {
                                                 selectedState = state
                                                 showStateMenu = false
                                             })
