@@ -140,11 +140,25 @@ class MainActivity : ComponentActivity() {
                     }
                 }
 
+                val platesForState = remember(licensePlates, selectedState) {
+                    if (selectedState == "All states") {
+                        licensePlates
+                    } else {
+                        licensePlates.filter { it.state == selectedState }
+                    }
+                }
+
+                val seenPlatesInStateCount = remember(platesForState, seenPlates) {
+                    platesForState.count { it.code in seenPlates }
+                }
+
+                val totalPlatesInStateCount = platesForState.size
+
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
                     topBar = {
                         TopAppBar(
-                            title = { Text("Plates") },
+                            title = { Text(if (totalPlatesInStateCount > 0) "Plates: $seenPlatesInStateCount / $totalPlatesInStateCount" else "Plates") },
                             actions = {
                                 Box {
                                     TextButton(onClick = { showStateMenu = true }) {
