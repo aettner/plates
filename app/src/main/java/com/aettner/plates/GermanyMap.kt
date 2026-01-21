@@ -14,7 +14,7 @@ import androidx.compose.ui.graphics.vector.PathParser
 import kotlin.math.min
 
 @Composable
-fun GermanyMap(completedStates: Set<String>) {
+fun GermanyMap(licensePlates: List<LicensePlate>, seenPlates: Set<String>, useDarkTheme: Boolean) {
     val states = mapOf(
         "DE-SH" to "M420 70 L500 90 L560 140 L570 190 L520 210 L470 200 L430 220 L380 190 L360 140 Z",
         "DE-MV" to "M560 140 L660 160 L740 210 L760 270 L720 300 L660 290 L620 310 L570 270 Z",
@@ -40,6 +40,12 @@ fun GermanyMap(completedStates: Set<String>) {
             pathParser.parsePathString(pathData).toPath()
         }
     }
+    
+    val platesByState = remember(licensePlates) {
+        licensePlates.groupBy { it.state }
+    }
+
+    val borderColor = if (useDarkTheme) Color.White else Color.Black
 
     Canvas(modifier = Modifier.fillMaxSize()) { 
         val canvasWidth = size.width
@@ -60,16 +66,33 @@ fun GermanyMap(completedStates: Set<String>) {
         }) {
             paths.forEach { (id, path) ->
                 val stateName = StateMapping.stateToSvgId.entries.find { it.value == id }?.key
-                val isCompleted = stateName in completedStates
+                
+                val platesInState = platesByState[stateName] ?: emptyList()
+                val seenPlatesInState = platesInState.count { it.code in seenPlates }
+                val totalPlatesInState = platesInState.size
+                val percentage = if (totalPlatesInState > 0) {
+                    seenPlatesInState.toFloat() / totalPlatesInState.toFloat()
+                } else {
+                    0f
+                }
+
+                val color = when {
+                    percentage == 1f -> Color(0xFFFFD700) // Gold
+                    percentage > 0f -> {
+                        val grayScale = (1 - percentage) * 255
+                        Color(grayScale.toInt(), grayScale.toInt(), grayScale.toInt())
+                    }
+                    else -> Color.White
+                }
 
                 drawPath(
                     path = path,
-                    color = if (isCompleted) Color(0xFFFFD700) else Color.White,
+                    color = color,
                 )
                 drawPath(
                     path = path,
-                    color = Color.Green,
-                    style = Stroke(width = 1f)
+                    color = borderColor,
+                    style = Stroke(width = 1f / scale) // Adjust stroke width for scaling
                 )
             }
         }
