@@ -7,6 +7,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,6 +28,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -55,6 +57,7 @@ import kotlinx.serialization.json.Json
 
 private const val PREFS_NAME = "LicensePlatePrefs"
 private const val SEEN_PLATES_KEY = "seen_plates"
+private const val THEME_KEY = "theme_preference"
 
 sealed class FilterState {
     data object All : FilterState()
@@ -67,13 +70,29 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            PlatesTheme {
-                var licensePlates by remember { mutableStateOf<List<LicensePlate>>(emptyList()) }
-                val context = LocalContext.current
+            val context = LocalContext.current
+            val sharedPreferences = remember {
+                context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            }
+            var themePreference by remember {
+                mutableStateOf(sharedPreferences.getString(THEME_KEY, "System") ?: "System")
+            }
 
-                val sharedPreferences = remember {
-                    context.getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
+            LaunchedEffect(themePreference) {
+                sharedPreferences.edit {
+                    putString(THEME_KEY, themePreference)
                 }
+            }
+
+            val useDarkTheme = when (themePreference) {
+                "Light" -> false
+                "Dark" -> true
+                else -> isSystemInDarkTheme()
+            }
+
+            PlatesTheme(darkTheme = useDarkTheme) {
+                var licensePlates by remember { mutableStateOf<List<LicensePlate>>(emptyList()) }
+
                 var seenPlates by remember {
                     mutableStateOf(sharedPreferences.getStringSet(SEEN_PLATES_KEY, emptySet()) ?: emptySet())
                 }
@@ -194,6 +213,15 @@ class MainActivity : ComponentActivity() {
                                         DropdownMenuItem(
                                             text = { Text("Unseen") },
                                             onClick = { filterState = FilterState.Unseen; showMenu = false })
+                                        DropdownMenuItem(
+                                            text = { Text("System Theme") },
+                                            onClick = { themePreference = "System"; showMenu = false })
+                                        DropdownMenuItem(
+                                            text = { Text("Light Theme") },
+                                            onClick = { themePreference = "Light"; showMenu = false })
+                                        DropdownMenuItem(
+                                            text = { Text("Dark Theme") },
+                                            onClick = { themePreference = "Dark"; showMenu = false })
                                     }
                                 }
                             }
@@ -217,7 +245,7 @@ class MainActivity : ComponentActivity() {
                                             val isSeen = plate.code in seenPlates
                                             Text(
                                                 text = "${plate.code}: ${plate.city} (${plate.state})",
-                                                color = if (isSeen) Color.Gray else Color.Unspecified,
+                                                color = if (isSeen) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
                                                 modifier = Modifier
                                                     .fillMaxWidth()
                                                     .clickable {
@@ -275,8 +303,8 @@ fun LicensePlateList(
                 headlineContent = { Text("${plate.code}: ${plate.city}") },
                 supportingContent = { Text(text = plate.state) },
                 colors = ListItemDefaults.colors(
-                    headlineColor = if (isSeen) Color.Gray else Color.Unspecified,
-                    supportingColor = if (isSeen) Color.Gray else Color.Unspecified
+                    headlineColor = if (isSeen) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurface,
+                    supportingColor = if (isSeen) MaterialTheme.colorScheme.outline else MaterialTheme.colorScheme.onSurfaceVariant
                 ),
                 modifier = Modifier
                     .fillMaxWidth()
