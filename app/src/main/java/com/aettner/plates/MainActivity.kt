@@ -59,10 +59,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 private const val PREFS_NAME = "LicensePlatePrefs"
-private const val SEEN_PLATES_KEY = "seen_plates"
+private const val SEEN_PLATES_KEY = "seen_plates_timestamps"
 private const val THEME_KEY = "theme_preference"
 
 sealed class Screen(val route: String) {
@@ -106,12 +107,19 @@ class MainActivity : ComponentActivity() {
                 var licensePlates by remember { mutableStateOf<List<LicensePlate>>(emptyList()) }
 
                 var seenPlates by remember {
-                    mutableStateOf(sharedPreferences.getStringSet(SEEN_PLATES_KEY, emptySet()) ?: emptySet())
+                    val savedJson = sharedPreferences.getString(SEEN_PLATES_KEY, null)
+                    val map = if (savedJson != null) {
+                        Json.decodeFromString<Map<String, Long>>(savedJson)
+                    } else {
+                        emptyMap()
+                    }
+                    mutableStateOf(map)
                 }
 
                 LaunchedEffect(seenPlates) {
                     sharedPreferences.edit {
-                        putStringSet(SEEN_PLATES_KEY, seenPlates)
+                        val json = Json.encodeToString(seenPlates)
+                        putString(SEEN_PLATES_KEY, json)
                     }
                 }
 
@@ -134,7 +142,7 @@ class MainActivity : ComponentActivity() {
                 val completedStates = remember(licensePlates, seenPlates) {
                     licensePlates.groupBy { it.state }.filter {
                         val allPlatesInState = it.value.map { plate -> plate.code }.toSet()
-                        seenPlates.containsAll(allPlatesInState)
+                        seenPlates.keys.containsAll(allPlatesInState)
                     }.keys
                 }
 
@@ -340,7 +348,7 @@ class MainActivity : ComponentActivity() {
                                             seenPlates - plate.code
                                         } else {
                                             Log.d("LicensePlateClick", "Marked as seen: ${plate.code}")
-                                            seenPlates + plate.code
+                                            seenPlates + (plate.code to System.currentTimeMillis())
                                         }
                                     },
                                     listState = listState
@@ -348,7 +356,7 @@ class MainActivity : ComponentActivity() {
                             }
                         }
                         composable(Screen.Map.route) {
-                            MapScreen(licensePlates, seenPlates, useDarkTheme)
+                            MapScreen(licensePlates, seenPlates.keys, useDarkTheme)
                         }
                     }
                 }
@@ -363,7 +371,7 @@ fun GreetingPreview() {
     PlatesTheme {
         PlateListScreen(
             licensePlates = listOf(LicensePlate("KA", "Karlsruhe", "Baden-Württemberg")),
-            seenPlates = setOf("KA"),
+            seenPlates = mapOf("KA" to System.currentTimeMillis()),
             onPlateClicked = {}
         )
     }

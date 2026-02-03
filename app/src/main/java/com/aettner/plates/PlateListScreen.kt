@@ -37,11 +37,14 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 @Composable
 fun PlateListScreen(
     licensePlates: List<LicensePlate>,
-    seenPlates: Set<String>,
+    seenPlates: Map<String, Long>,
     onPlateClicked: (LicensePlate) -> Unit,
     modifier: Modifier = Modifier,
     listState: LazyListState = rememberLazyListState()
@@ -50,7 +53,7 @@ fun PlateListScreen(
         items(items = licensePlates, key = { it.code }) { plate ->
             PlateListItem(
                 plate = plate,
-                isSeen = plate.code in seenPlates,
+                seenTimestamp = seenPlates[plate.code],
                 onPlateClicked = { onPlateClicked(plate) }
             )
         }
@@ -60,12 +63,13 @@ fun PlateListScreen(
 @Composable
 fun PlateListItem(
     plate: LicensePlate,
-    isSeen: Boolean,
+    seenTimestamp: Long?,
     onPlateClicked: () -> Unit
 ) {
     val animatedProgress = remember { Animatable(0f) }
     var showProgress by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
+    val isSeen = seenTimestamp != null
 
     LaunchedEffect(showProgress) {
         if (!showProgress) {
@@ -128,7 +132,18 @@ fun PlateListItem(
     ) {
         Column(modifier = Modifier.weight(1f)) {
             Text(text = "${plate.code}: ${plate.city}", color = headlineColor)
-            Text(text = plate.state, color = supportColor)
+            val secondaryText = if (seenTimestamp != null) {
+                val date = remember(seenTimestamp) { Date(seenTimestamp) }
+                val dateFormat = remember { SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault()) }
+                "${plate.state} - ${dateFormat.format(date)}"
+            } else {
+                plate.state
+            }
+            Text(
+                text = secondaryText,
+                color = supportColor,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
         Box(
             modifier = Modifier.size(48.dp),
