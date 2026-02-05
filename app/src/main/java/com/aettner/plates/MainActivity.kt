@@ -5,7 +5,9 @@ import android.content.Context.MODE_PRIVATE
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
@@ -116,6 +118,46 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(map)
                 }
 
+                val coroutineScope = rememberCoroutineScope()
+
+                val createDocumentLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.CreateDocument("application/json"),
+                    onResult = { uri ->
+                        uri?.let {
+                            coroutineScope.launch(Dispatchers.IO) {
+                                try {
+                                    val json = Json.encodeToString(seenPlates)
+                                    context.contentResolver.openOutputStream(it)?.use { outputStream ->
+                                        outputStream.write(json.toByteArray())
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                        }
+                    }
+                )
+
+                val getDocumentLauncher = rememberLauncherForActivityResult(
+                    contract = ActivityResultContracts.GetContent(),
+                    onResult = { uri ->
+                        uri?.let {
+                            coroutineScope.launch(Dispatchers.IO) {
+                                try {
+                                    context.contentResolver.openInputStream(it)?.use { inputStream ->
+                                        val json = inputStream.reader().readText()
+                                        withContext(Dispatchers.Main) {
+                                            seenPlates = Json.decodeFromString<Map<String, Long>>(json)
+                                        }
+                                    }
+                                } catch (e: Exception) {
+                                    e.printStackTrace()
+                                }
+                            }
+                        }
+                    }
+                )
+
                 LaunchedEffect(seenPlates) {
                     sharedPreferences.edit {
                         val json = Json.encodeToString(seenPlates)
@@ -154,7 +196,6 @@ class MainActivity : ComponentActivity() {
 
                 var searchQuery by remember { mutableStateOf("") }
                 val listState = rememberLazyListState()
-                val coroutineScope = rememberCoroutineScope()
 
                 val filteredPlates = remember(licensePlates, seenPlates, filterState, selectedState) {
                     val stateFilteredPlates = if (selectedState == "All states") {
@@ -255,6 +296,18 @@ class MainActivity : ComponentActivity() {
                                         expanded = showMenu,
                                         onDismissRequest = { showMenu = false }
                                     ) {
+                                        DropdownMenuItem(
+                                            text = { Text("Import") },
+                                            onClick = {
+                                                getDocumentLauncher.launch("*/*")
+                                                showMenu = false
+                                            })
+                                        DropdownMenuItem(
+                                            text = { Text("Export") },
+                                            onClick = {
+                                                createDocumentLauncher.launch("plates_export.json")
+                                                showMenu = false
+                                            })
                                         DropdownMenuItem(
                                             text = { Text("Settings") },
                                             onClick = { showSettingsMenu = true; showMenu = false })
