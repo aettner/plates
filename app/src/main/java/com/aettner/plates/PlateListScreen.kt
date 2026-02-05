@@ -124,7 +124,7 @@ fun PlateListItem(
                         }
                     }
                 } else {
-                    Modifier.clickable { onPlateClicked() }
+                    Modifier
                 }
             )
             .padding(horizontal = 16.dp, vertical = 8.dp),
@@ -146,7 +146,9 @@ fun PlateListItem(
             )
         }
         Box(
-            modifier = Modifier.size(48.dp),
+            modifier = Modifier
+                .size(48.dp)
+                .clickable(enabled = !isSeen) { onPlateClicked() },
             contentAlignment = Alignment.Center
         ) {
             if (!isSeen) {
