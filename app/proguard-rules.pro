@@ -19,3 +19,14 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# Keep rules for kotlinx.serialization
+-keep,allowobfuscation,allowshrinking @kotlinx.serialization.Serializable class *
+-keepclassmembers class * { @kotlinx.serialization.Serializable <methods>; }
+-keepclassmembers class * { ** Companion; }
+-keepclassmembers class * {
+    @kotlinx.serialization.Transient <fields>;
+}
+
+# Keep the LicensePlate data class
+-keep class com.aettner.plates.LicensePlate { *; }

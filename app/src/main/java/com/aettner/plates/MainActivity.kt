@@ -3,7 +3,6 @@ package com.aettner.plates
 
 import android.content.Context.MODE_PRIVATE
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -63,6 +62,7 @@ import kotlinx.coroutines.withContext
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import java.io.IOException
 
 private const val PREFS_NAME = "LicensePlatePrefs"
 private const val SEEN_PLATES_KEY = "seen_plates_timestamps"
@@ -111,7 +111,11 @@ class MainActivity : ComponentActivity() {
                 var seenPlates by remember {
                     val savedJson = sharedPreferences.getString(SEEN_PLATES_KEY, null)
                     val map = if (savedJson != null) {
-                        Json.decodeFromString<Map<String, Long>>(savedJson)
+                        try {
+                            Json.decodeFromString<Map<String, Long>>(savedJson)
+                        } catch (e: Exception) {
+                            emptyMap()
+                        }
                     } else {
                         emptyMap()
                     }
@@ -130,8 +134,8 @@ class MainActivity : ComponentActivity() {
                                     context.contentResolver.openOutputStream(it)?.use { outputStream ->
                                         outputStream.write(json.toByteArray())
                                     }
-                                } catch (e: Exception) {
-                                    e.printStackTrace()
+                                } catch (e: IOException) {
+                                    // In a real app, you might want to show a toast to the user.
                                 }
                             }
                         }
@@ -151,7 +155,7 @@ class MainActivity : ComponentActivity() {
                                         }
                                     }
                                 } catch (e: Exception) {
-                                    e.printStackTrace()
+                                    // In a real app, you might want to show a toast to the user.
                                 }
                             }
                         }
@@ -171,8 +175,8 @@ class MainActivity : ComponentActivity() {
                             val jsonString =
                                 context.assets.open("german_license_plates.json").bufferedReader().use { it.readText() }
                             licensePlates = Json.decodeFromString<List<LicensePlate>>(jsonString)
-                        } catch (e: Exception) {
-                            e.printStackTrace()
+                        } catch (e: IOException) {
+                            // This should not happen with assets, but good to have.
                         }
                     }
                 }
@@ -397,10 +401,8 @@ class MainActivity : ComponentActivity() {
                                     seenPlates = seenPlates,
                                     onPlateClicked = { plate ->
                                         seenPlates = if (plate.code in seenPlates) {
-                                            Log.d("LicensePlateClick", "Marked as unseen: ${plate.code}")
                                             seenPlates - plate.code
                                         } else {
-                                            Log.d("LicensePlateClick", "Marked as seen: ${plate.code}")
                                             seenPlates + (plate.code to System.currentTimeMillis())
                                         }
                                     },

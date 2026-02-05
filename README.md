@@ -24,6 +24,6 @@ To build and run the app, you'll need to have Android Studio installed.
 ## Technologies Used
 
 *   [Kotlin](https://kotlinlang.org/)
-*   [Jetpack Compose](https://developer.android.com/jetpack/compose) for the UI
+*   [Jetpack Compose](https://developer.android.com/jetpack/compose) for the UI, using [Material 3](https://m3.material.io/) components and [Navigation](https://developer.android.com/jetpack/compose/navigation).
 *   [Kotlinx Serialization](https://github.com/Kotlin/kotlinx.serialization) for JSON parsing
-*   [Coil](https://coil-kt.github.io/coil/) for image loading
+*   [Coil](https://coil-kt.github.io/coil/) for image loading, with SVG support.
